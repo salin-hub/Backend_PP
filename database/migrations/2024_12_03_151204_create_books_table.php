@@ -14,6 +14,11 @@ class CreateBooksTable extends Migration
             $table->text('description');
             $table->foreignId('author_id')->constrained()->onDelete('cascade'); // Foreign key to authors table
             $table->foreignId('category_id')->constrained()->onDelete('cascade'); // Foreign key to categories table
+            $table->unsignedBigInteger('subcategory_id')->nullable(); // Define subcategory_id as unsignedBigInteger
+
+            // Define the foreign key constraint for subcategory_id (ensure that subcategory_id is nullable)
+            $table->foreign('subcategory_id')->references('id')->on('sub_categories')->onDelete('set null');
+
             $table->string('publisher');
             $table->date('publish_date');
             $table->integer('pages');

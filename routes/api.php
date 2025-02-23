@@ -12,6 +12,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\OrderController;
 
 // Public Routes
+Route::get('subcategories', [CategoryController::class, 'getAllSubCategories']); 
 Route::post('admin-login', [AuthController::class, 'loginadmin']);
 Route::post('login', [AuthController::class, 'Login']);
 Route::post('register', [AuthController::class, 'register']);
@@ -43,7 +44,9 @@ Route::get('/orders', [OrderController::class, 'getAllOrders']);
 Route::put('/order-items/{id}/status', [OrderController::class, 'updateOrderStatus']);
 Route::get('/total-orders', [OrderController::class, 'getTotalOrderCount']);
 Route::get('getauthors', [AuthorController::class, 'getallauthors'])->name('authors.index');
+Route::get('/{id}', [CategoryController::class, 'getCategory']);
 Route::middleware('auth:api')->prefix('admin')->group(function () {
+    Route::get('/categories', [CategoryController::class, 'getAllCategories']);
     Route::put('/order-items/{id}/status', [OrderController::class, 'updateOrderStatus']);
     Route::middleware('auth:sanctum')->get('/accounts', [AuthController::class, 'getAllAccounts']);
     Route::get('/users/{id}', [AuthController::class, 'getAccount']);
@@ -54,6 +57,12 @@ Route::middleware('auth:api')->prefix('admin')->group(function () {
     Route::get('/authors/{id}', [AuthorController::class, 'show']);
     // Route to update an author by ID
     Route::put('authors/{id}', [AuthorController::class, 'update']);
+    Route::get('{categoryId}/subcategories', [CategoryController::class, 'getSubCategories']); // Get all subcategories by category
+    Route::get('{categoryId}/subcategories/{subCategoryId}', [CategoryController::class, 'getSubCategory']); // Get a specific subcategory by category
+    
+    Route::post('{categoryId}/subcategories', [CategoryController::class, 'createSubCategory']); // Create a new subcategory under a category
+    Route::put('{categoryId}/subcategories/{subCategoryId}', [CategoryController::class, 'updateSubCategory']); // Update a subcategory under a category
+    Route::delete('{categoryId}/subcategories/{subCategoryId}', [CategoryController::class, 'deleteSubCategory']); // Delete a subcategory under a category
 
 
     // Route to delete an author by ID

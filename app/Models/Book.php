@@ -15,6 +15,7 @@ class Book extends Model
         'description',
         'author_id',
         'category_id',
+        'subcategory_id',  // Add subcategory_id here
         'publisher',
         'publish_date',
         'pages',
@@ -36,6 +37,10 @@ class Book extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+    public function subcategory()
+    {
+        return $this->belongsTo(Subcategory::class);
     }
     public function favorites()
     {

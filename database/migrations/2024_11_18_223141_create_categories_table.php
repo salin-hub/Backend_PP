@@ -9,13 +9,12 @@ class CreateCategoriesTable extends Migration
     public function up()
     {
         Schema::create('categories', function (Blueprint $table) {
-            $table->id(); // Creates BIGINT UNSIGNED as primary key
-            $table->string('name'); // Adds a name column
-            $table->string('description'); // Adds a description column
-            $table->timestamps(); // Adds created_at and updated_at columns
+            $table->id();
+            $table->string('name');
+            $table->text('description')->nullable();
+            $table->timestamps();
         });
     }
-
     public function down()
     {
         Schema::dropIfExists('categories'); // Drops the entire categories table

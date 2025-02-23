@@ -27,11 +27,13 @@ class BookController extends Controller
     }
     public function storeBook(Request $request)
     {
+        // Validate the request data including subcategory_id
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'author_id' => 'required|exists:authors,id',
             'category_id' => 'required|exists:categories,id',
+            'subcategory_id' => 'nullable|exists:sub_categories,id', // Validate subcategory_id
             'publisher' => 'required|string|max:255',
             'publish_date' => 'required|date',
             'pages' => 'required|integer|min:1',
@@ -42,13 +44,18 @@ class BookController extends Controller
             'cover_path' => 'required|file|mimes:jpg,jpeg,png|max:2048',
             'price_handbook' => 'required|numeric|min:0',
         ]);
-
+    
+        // Create a new Book instance
         $book = new Book();
+        
+        // Fill the validated data (including subcategory_id)
         $book->fill($validated);
-
+    
+        // Check if a cover image is uploaded
         if ($request->hasFile('cover_path')) {
             $imageFile = $request->file('cover_path');
-
+    
+            // Initialize the Cloudinary upload API
             $uploadApi = new UploadApi();
             $uploadedFile = $uploadApi->upload(
                 $imageFile->getRealPath(),
@@ -56,17 +63,21 @@ class BookController extends Controller
                     'folder' => 'imageBooks',
                 ]
             );
-
+    
+            // Get the secure URL of the uploaded image
             $imageUrl = $uploadedFile['secure_url'];
-
+    
+            // Save the image URL to the cover_path field
             $book->cover_path = $imageUrl;
         }
-
+    
+        // Save the new book to the database
         $book->save();
-
+    
+        // Return a response with the created book and a success message
         return response()->json(['message' => 'Book created successfully!', 'book' => $book], 201);
     }
-
+    
     /**
      * Retrieve all books.
      */
