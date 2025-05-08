@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Rating;
+use App\Models\Review;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -18,7 +19,7 @@ class RatingController extends Controller
         $userId = Auth::id();
 
         // Check if the user has already rated this product
-        $existingRating = Rating::where('book_id', $request->product_id)
+        $existingRating = Review::where('book_id', $request->product_id)
             ->where('users_id', $userId)
             ->first();
 
@@ -26,7 +27,7 @@ class RatingController extends Controller
             return response()->json(['message' => 'User has already rated this product.'], 400);
         }
 
-        $rating = Rating::create([
+        $rating = Review::create([
             'books_id' => $request->product_id,
             'users_id' => $userId,
             'rating' => $request->rating,

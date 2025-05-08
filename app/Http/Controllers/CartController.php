@@ -36,13 +36,50 @@ class CartController extends Controller
         return response()->json(['message' => 'Book added to cart successfully!'], 200);
     }
     public function viewCart($userId)
-    {
-        $cartItems = Cart::where('user_id', $userId)
-            ->with('book') // Assuming you have a relationship defined in the Cart model to fetch book details
-            ->get();
+{
+    $cartItems = Cart::where('user_id', $userId)
+        ->with(['book.author', 'book.discountBooks.discount']) // Load discounts and author
+        ->get();
 
-        return response()->json(['cartItems' => $cartItems]);
-    }
+    // Map discount data
+    $cartItems = $cartItems->map(function ($item) {
+        $book = $item->book;
+
+        if (!$book) return $item;
+
+        // Find the active discount
+        $discount = $book->discountBooks
+            ->filter(function ($discountBook) {
+                $now = now();
+                return $discountBook->discount &&
+                    $discountBook->discount->start_date <= $now &&
+                    $discountBook->discount->end_date >= $now;
+            })
+            ->sortByDesc(function ($discountBook) {
+                return $discountBook->discount->start_date;
+            })
+            ->first();
+
+        // Calculate discount details
+        $discountPercentage = $discount ? optional($discount->discount)->discount_percentage : 0;
+        $discountAmount = $discountPercentage > 0
+            ? round($book->price_handbook * ($discountPercentage / 100), 2)
+            : 0;
+        $discountedPrice = $discountPercentage > 0
+            ? round($book->price_handbook - $discountAmount, 2)
+            : $book->price_handbook;
+
+        // Attach discount details to book object
+        $book->discount_percentage = $discountPercentage;
+        $book->discount_amount = $discountAmount;
+        $book->discounted_price = $discountedPrice;
+
+        return $item;
+    });
+
+    return response()->json(['cartItems' => $cartItems]);
+}
+
     public function deleteCartItem(Request $request, $id)
     {
         // Find the cart item by ID

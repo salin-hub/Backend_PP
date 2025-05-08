@@ -9,13 +9,13 @@ class Book extends Model
 {
     use HasFactory;
 
-    // Define the fillable fields for mass assignment
+   
     protected $fillable = [
         'title',
         'description',
         'author_id',
         'category_id',
-        'subcategory_id',  // Add subcategory_id here
+        'subcategory_id',  
         'publisher',
         'publish_date',
         'pages',
@@ -25,25 +25,39 @@ class Book extends Model
         'type',
         'cover_path',
         'price_handbook',
+        'quantity',
+
     ];
 
-    // Define the relationship with Author model
     public function author()
     {
         return $this->belongsTo(Author::class);
     }
-
-    // Define the relationship with Category model
     public function category()
     {
         return $this->belongsTo(Category::class);
     }
     public function subcategory()
     {
-        return $this->belongsTo(Subcategory::class);
+        return $this->belongsTo(SubCategory::class, 'subcategory_id');
     }
+
     public function favorites()
     {
-        return $this->hasMany(Favorite::class, 'books_id');
+        return $this->hasMany(Favorite::class);
     }
+    public function discountBooks()
+    {
+        return $this->hasMany(DiscountBook::class);
+    }
+
+    public function couponBooks()
+    {
+        return $this->hasMany(CouponBook::class);
+    }
+    public function reviews()
+    {
+        return $this->hasMany(Review::class, 'book_id');
+    }
+  
 }

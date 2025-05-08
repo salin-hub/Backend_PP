@@ -10,32 +10,37 @@ use App\Models\Book;
 
 class FavoriteController extends Controller
 {
-    public function addfavorite(Request $request)
-    {
-        // Validate incoming request
-        $request->validate([
-            'books_id' => 'required|exists:books,id',
-            'users_id' => 'required|exists:users,id',
-        ]);
+    public function addFavorite(Request $request)
+{
+    // Validate incoming request
+    $validated = $request->validate([
+        'books_id' => 'required|exists:books,id',
+        'user_id' => 'required|exists:users,id',
+    ]);
 
-        // Check if the book is already in the user's favorites
-        $existingFavorite = Favorite::where('users_id', $request->users_id)
-            ->where('books_id', $request->books_id)
-            ->first();
+    // Check if the book is already in the user's favorites
+    $existingFavorite = Favorite::where('user_id', $validated['user_id'])
+        ->where('books_id', $validated['books_id'])
+        ->first();
 
-        // If it's already favorited, return true
-        if ($existingFavorite) {
-            return response()->json(['message' => 'Book is already in favorites.', 'favorite' => true], 200);
-        }
-
-        // Otherwise, add the book to favorites
-        $favorite = Favorite::create([
-            'users_id' => $request->users_id,
-            'books_id' => $request->books_id,
-        ]);
-
-        return response()->json(['message' => 'Book added to favorites.', 'favorite' => $favorite], 201);
+    if ($existingFavorite) {
+        return response()->json([
+            'message' => 'Book is already in favorites.',
+            'favorite' => true
+        ], 200);
     }
+
+    // Add the book to favorites
+    $favorite = Favorite::create([
+        'user_id' => $validated['user_id'],
+        'books_id' => $validated['books_id'],
+    ]);
+
+    return response()->json([
+        'message' => 'Book added to favorites.',
+        'favorite' => $favorite
+    ], 201);
+}
 
 
     public function deleteFavorite(Request $request)
@@ -64,18 +69,99 @@ class FavoriteController extends Controller
 
     public function getUserFavorites($userId)
     {
-        $favorites = Favorite::where('users_id', $userId)
-            ->with('book')  // Optionally, eager load the book data
-            ->get();
-
+        $favorites = Favorite::where('user_id', $userId)
+            ->with('book') // Eager load the book relationship
+            ->get()
+            ->map(function ($favorite) {
+                return [
+                    'id' => $favorite->id,
+                    'book' => $favorite->book,
+                    'created_at' => $favorite->created_at->toDateTimeString(),
+                ];
+            });
+    
         return response()->json(['favorites' => $favorites]);
     }
+    
 
+    // public function list($userId)
+    // {
+    //     $favorites = Favorite::where('users_id', $userId)->with('book','book.author','book.category', 'book.subCategory', 'book.discountBooks.discount', 'book.reviews')->get();
+    //     return response()->json(['favorites', $favorites]);
+    // }
     public function list($userId)
-    {
-        $favorites = Favorite::where('users_id', $userId)->with('book')->get();
-        return response()->json(['favorites', $favorites]);
-    }
+{
+    $favorites = Favorite::where('user_id', $userId)
+        ->with('book.author', 'book.category', 'book.subCategory', 'book.discountBooks.discount', 'book.reviews')
+        ->get()
+        ->map(function ($favorite) {
+            $book = $favorite->book;
+
+            $totalReviews = $book->reviews->count();
+            $averageRating = $totalReviews > 0 ? number_format($book->reviews->avg('rating'), 2) : '0.00';
+
+            $discount = $book->discountBooks()
+                ->whereHas('discount', function ($query) {
+                    $query->where('start_date', '<=', now())
+                          ->where('end_date', '>=', now());
+                })
+                ->latest()
+                ->first();
+
+            $discountedPrice = $discount
+                ? round($book->price_handbook - ($book->price_handbook * (optional($discount->discount)->discount_percentage / 100)), 2)
+                : null;
+
+            return [
+                'id' => $book->id,
+                'title' => $book->title,
+                'description' => $book->description,
+                'author_id' => $book->author_id,
+                'category_id' => $book->category_id,
+                'sub_category_id' => $book->subcategory_id,
+                'publisher' => $book->publisher,
+                'publish_date' => $book->publish_date,
+                'pages' => $book->pages,
+                'dimensions' => $book->dimensions,
+                'language' => $book->language,
+                'ean' => $book->ean,
+                'type' => $book->type,
+                'cover_path' => $book->cover_path,
+                'original_price' => $book->price_handbook,
+                'has_discount' => $discount ? true : false,
+                'discounted_price' => $discountedPrice,
+                'ratingCount' => $averageRating,
+                'reviewcount' => $totalReviews,
+                'sales_count' => $book->sales_count,
+                'author' => [
+                    'id' => $book->author->id,
+                    'name' => $book->author->name,
+                    'email' => $book->author->email,
+                    'description' => $book->author->description,
+                    'image' => $book->author->image,
+                ],
+                'category' => [
+                    'id' => $book->category->id,
+                    'name' => $book->category->name,
+                    'description' => $book->category->description,
+                ],
+                'sub_category' => [
+                    'id' => $book->subCategory->id,
+                    'name' => $book->subCategory->name,
+                ],
+                'discount' => $discount ? [
+                    'id' => $discount->discount_id,
+                    'discount_percentage' => $discount->discount->discount_percentage,
+                    'start_date' => $discount->discount->start_date,
+                    'end_date' => $discount->discount->end_date,
+                    'description' => $discount->discount->description,
+                ] : null
+            ];
+        });
+
+    return response()->json(['favorites' => $favorites]);
+}
+
     public function getMostFavoritedBooks()
     {
         try {

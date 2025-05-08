@@ -1,23 +1,24 @@
 <?php
 
 namespace App\Models;
+namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Rating extends Model
+class CouponBook extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['books_id', 'users_id', 'rating'];
+    protected $fillable = ['book_id', 'coupon_id'];
 
-    public function product()
+    public function book()
     {
         return $this->belongsTo(Book::class);
     }
 
-    public function user()
+    public function coupon()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Coupon::class);
     }
 }

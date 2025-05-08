@@ -10,11 +10,12 @@ return new class extends Migration
 {
     Schema::create('orders', function (Blueprint $table) {
         $table->id();
-        $table->unsignedBigInteger('user_id');
+        $table->string('user_id');  // Make sure this matches the user_id type in your users table
+        $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         $table->decimal('total_price', 10, 2);
         $table->timestamps();
 
-        $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+        // $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
     });
 }
 

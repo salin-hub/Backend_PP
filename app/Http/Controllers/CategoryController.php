@@ -48,6 +48,8 @@ class CategoryController extends Controller
             return response()->json(['error' => 'Category not found', 'details' => $e->getMessage()], 404);
         }
     }
+    // Get books by subcategory ID
+
 
     // Update a category
     public function update(Request $request, $id)
@@ -77,7 +79,15 @@ class CategoryController extends Controller
             return response()->json(['error' => 'Category not found or deletion failed'], 404);
         }
     }
-
+    public function getSubCategories($categoryId)
+    {
+        try {
+            $category = Category::with('subcategories')->findOrFail($categoryId);
+            return response()->json(['subcategories' => $category->subcategories], 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Category not found', 'details' => $e->getMessage()], 404);
+        }
+    }
     // Get Books by Category
     public function getBooksByCategory($categoryId)
     {
@@ -111,28 +121,54 @@ class CategoryController extends Controller
     }
 
     // Get SubCategories by Category
-    public function getSubCategories($categoryId)
-    {
-        try {
-            $category = Category::with('subcategories')->findOrFail($categoryId);
-            return response()->json(['subcategories' => $category->subcategories], 200);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Category not found', 'details' => $e->getMessage()], 404);
-        }
-    }
-    public function getAllSubCategories()
+    public function getSubCategoryById($id)
 {
     try {
-        // Fetch all subcategories
-        $subcategories = SubCategory::all();
-
-        // Return subcategories in the response
-        return response()->json(['subcategories' => $subcategories], 200);
+        // Fetch the subcategory by ID and eager load its associated books and category
+        $subcategory = SubCategory::with('books', 'category')->findOrFail($id);
+        
+        // Modify the subcategory response to add the category name as 'name_category'
+        $subcategory->category_name = $subcategory->category->name; // Add category name to subcategory
+        $subcategory->makeHidden('category'); // Hide the full category object
+        
+        // Return the modified subcategory with books and category name
+        return response()->json(['subcategory' => $subcategory], 200);
     } catch (\Exception $e) {
-        // Return an error response in case of any failure
-        return response()->json(['error' => 'Failed to retrieve subcategories', 'details' => $e->getMessage()], 500);
+        // Return an error response if the subcategory is not found or any other failure
+        return response()->json(['error' => 'Failed to retrieve data', 'details' => $e->getMessage()], 500);
     }
 }
+
+
+
+    public function getAllSubCategories()
+    {
+        try {
+            // Fetch all subcategories with their associated books (eager load books)
+            $subcategories = SubCategory::with('books')->get();
+    
+            // Return subcategories along with books
+            return response()->json(['subcategories' => $subcategories], 200);
+        } catch (\Exception $e) {
+            // Return an error response in case of any failure
+            return response()->json(['error' => 'Failed to retrieve data', 'details' => $e->getMessage()], 500);
+        }
+    }
+    
+    public function getCategoriesWithSubCategories()
+    {
+        try {
+            // Fetch categories with their related subcategories
+            $categories = Category::with('subCategories')->get();
+
+            // Return categories with subcategories
+            return response()->json(['categories' => $categories], 200);
+        } catch (\Exception $e) {
+            // Return an error response in case of any failure
+            return response()->json(['error' => 'Failed to retrieve data', 'details' => $e->getMessage()], 500);
+        }
+    }
+
 
 
     // Get a single SubCategory by ID
@@ -173,6 +209,4 @@ class CategoryController extends Controller
             return response()->json(['error' => 'Subcategory deletion failed', 'details' => $e->getMessage()], 500);
         }
     }
- 
-
 }

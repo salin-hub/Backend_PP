@@ -15,10 +15,8 @@ class CreateBooksTable extends Migration
             $table->foreignId('author_id')->constrained()->onDelete('cascade'); // Foreign key to authors table
             $table->foreignId('category_id')->constrained()->onDelete('cascade'); // Foreign key to categories table
             $table->unsignedBigInteger('subcategory_id')->nullable(); // Define subcategory_id as unsignedBigInteger
-
             // Define the foreign key constraint for subcategory_id (ensure that subcategory_id is nullable)
             $table->foreign('subcategory_id')->references('id')->on('sub_categories')->onDelete('set null');
-
             $table->string('publisher');
             $table->date('publish_date');
             $table->integer('pages');
@@ -28,6 +26,7 @@ class CreateBooksTable extends Migration
             $table->enum('type', ['handbook']); // Only 'handbook' type
             $table->string('cover_path'); // Cloudinary URL for the cover image
             $table->decimal('price_handbook', 8, 2); // Price for the handbook
+            $table->integer('quantity')->default(0); 
             $table->timestamps();
         });
     }
@@ -37,3 +36,4 @@ class CreateBooksTable extends Migration
         Schema::dropIfExists('books');
     }
 }
+

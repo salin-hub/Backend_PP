@@ -14,6 +14,11 @@ class SubCategory extends Model
     // Define relationship with Category
     public function category()
     {
-        return $this->belongsTo(Category::class);
+        return $this->belongsTo(Category::class, 'category_id');
     }
+    public function books()
+    {
+        return $this->hasMany(Book::class);
+    }
+
 }

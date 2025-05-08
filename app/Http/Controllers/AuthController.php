@@ -52,51 +52,48 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
+        $credentials = $request->only('email', 'password');
+    
+        $user = User::where('email', $credentials['email'])->first();
+    
+        if (!$user || !$user->is_active) {
+            return response()->json(['error' => 'Account is deactivated.'], 403);
+        }
+    
+        if (Auth::attempt($credentials)) {
+            // Login success
+            $token = $user->createToken('auth_token')->plainTextToken;
+            return response()->json(['token' => $token, 'user' => $user]);
+        }
+    
+        return response()->json(['error' => 'Invalid credentials'], 401);
+    }
+    
+    public function loginadmin(Request $request)
+    {
+        // Validate incoming request
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
         ]);
 
         $user = User::where('email', $request->email)->first();
-
-        if ($user && Hash::check($request->password, $user->password)) {
-            // Generate a token for the user
-            $token = $user->createToken('authToken')->plainTextToken;
+        if ($user && $user->role === 'admin' && Hash::check($request->password, $user->password)) {
+            $token = $user->createToken('adminToken')->plainTextToken;
 
             return response()->json([
                 'token' => $token,
                 'role' => $user->role,
-                'user' => $user,
-            ]);
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ],
+            ], 200);
         }
 
-        return response()->json(['error' => 'Unauthorized'], 401);
+        return response()->json(['error' => 'Unauthorized or not an admin'], 401);
     }
-    public function loginadmin(Request $request)
-{
-    // Validate incoming request
-    $request->validate([
-        'email' => 'required|email',
-        'password' => 'required',
-    ]);
-
-    $user = User::where('email', $request->email)->first();
-    if ($user && $user->role === 'admin' && Hash::check($request->password, $user->password)) {
-        $token = $user->createToken('adminToken')->plainTextToken;
-
-        return response()->json([
-            'token' => $token,
-            'role' => $user->role,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ],
-        ], 200);
-    }
-
-    return response()->json(['error' => 'Unauthorized or not an admin'], 401);
-}
 
     public function getAllAccounts(Request $request)
     {
@@ -128,33 +125,50 @@ class AuthController extends Controller
     public function updateAccount(Request $request, $id)
     {
         $user = User::find($id);
+
         if (!$user) {
             return response()->json(['error' => 'User not found'], 404);
         }
 
-        // Validate incoming data
+        // Validate input including password confirmation
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|required|string|max:255',
-            'email' => 'sometimes|required|string|email|max:255|unique:users,email,' . $id,
-            'password' => 'sometimes|required|string|min:8',
-            'role' => 'sometimes|required|string|in:user,admin',
+            'old_password' => 'required|string', // Old password required
+            'password' => 'sometimes|required|string|min:8|confirmed', // checks for password_confirmation
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 400);
         }
 
-        // Update user data
-        $user->name = $request->name ?? $user->name;
-        $user->email = $request->email ?? $user->email;
+        // Check if old password is correct
+        if (!Hash::check($request->old_password, $user->password)) {
+            return response()->json(['error' => 'Old password is incorrect'], 400);
+        }
+
+        // Update name if provided
+        if ($request->filled('name')) {
+            $user->name = $request->name;
+        }
+
+        // Update password if provided
         if ($request->filled('password')) {
             $user->password = Hash::make($request->password);
         }
-        $user->role = $request->role ?? $user->role;
+
         $user->save();
 
-        return response()->json(['message' => 'User updated successfully', 'user' => $user], 200);
+        return response()->json([
+            'message' => 'User updated successfully',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'role' => $user->role,
+            ]
+        ], 200);
     }
+
+
 
     // Delete user account
     public function deleteAccount($id)
@@ -169,18 +183,46 @@ class AuthController extends Controller
         return response()->json(['message' => 'User deleted successfully'], 200);
     }
 
-    // Logout the user
+    public function toggleStatus(Request $request, $id)
+    {
+        $user = User::find($id);
+
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], 404);
+        }
+
+        $request->validate([
+            'is_active' => 'required|boolean'
+        ]);
+
+        $user->is_active = $request->is_active;
+        $user->save();
+
+        return response()->json([
+            'message' => 'User status updated successfully',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'is_active' => $user->is_active
+            ]
+        ], 200);
+    }
+
+
     public function logout(Request $request)
     {
         $user = Auth::user();
+
         if (!$user) {
             return response()->json(['error' => 'Not authenticated'], 401);
         }
 
         try {
-            $user->tokens()->delete();
-        } catch (Exception $e) {
-            return response()->json(['error' => 'Could not log out user'], 500);
+            $user->tokens->each(function ($token) {
+                $token->delete(); // Delete all tokens associated with the user
+            });
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Could not log out user: ' . $e->getMessage()], 500);
         }
 
         return response()->json(['message' => 'Logged out successfully!'], 200);

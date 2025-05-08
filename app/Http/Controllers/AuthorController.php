@@ -270,15 +270,6 @@ class AuthorController extends Controller
             ],
         ], 200);
     }
-    
-
-
-
-
-
-
-
-
     public function destroy($id)
     {
         $author = Author::find($id);
